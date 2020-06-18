@@ -162,6 +162,31 @@ public class InProcessTaskCallbackApi
     }
 
     @Override
+    public StoredSessionAttempt fetchAttempt(
+            int siteId,
+            ProjectIdentifier projectIdentifier,
+            String workflowName,
+            Instant instant,
+            Optional<String> retryAttemptName)
+        throws ResourceNotFoundException
+    {
+        return tm.begin(() -> {
+                            ProjectStore projectStore = pm.getProjectStore(siteId);
+                            StoredProject proj = projectIdentifier.byId() ?
+                                projectStore.getProjectById(projectIdentifier.getId()) :
+                                projectStore.getProjectByName(projectIdentifier.getName());
+
+                            return exec.getAlreadyExistsAttempt(
+                                    siteId,
+                                    proj.getId(),
+                                    workflowName,
+                                    instant,
+                                    retryAttemptName
+                            );
+        }, ResourceNotFoundException.class);
+    }
+
+    @Override
     public StoredSessionAttempt startSession(
             OperatorContext context,
             int siteId,

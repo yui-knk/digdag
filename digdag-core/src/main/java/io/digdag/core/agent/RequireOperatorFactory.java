@@ -84,9 +84,13 @@ public class RequireOperatorFactory
 
             Config overrideParams = config.getNestedOrGetEmpty("params");
 
-            Optional<ProjectIdentifier> projectIdentifier = Optional.absent();
+            Optional<ProjectIdentifier> projectIdentifier = Optional.of(makeProjectIdentifier());
+
             /**
-             *  First of all, try to start attempt by startSession()
+             *  At first check "require_kicked". If "require_kicked" is set the task already started session so
+             *  we do not need to call startSession(), instead call fetch attempt and check status of the attempt.
+             *
+             *  Next try to start attempt by startSession()
              *  If no attempt exists (no conflict), it return new StoredSessionAttempt.
              *    - set state param "require_kicked" to true.
              *    - task is retried to wait for done by nextPolling.
@@ -103,10 +107,26 @@ public class RequireOperatorFactory
              *          - If ignore_failure is true or attempt finished successfully, require> op finished successfully
              *          - else finished with exception.
              */
-            try {
-                projectIdentifier = Optional.of(makeProjectIdentifier());
+            boolean requireKicked = lastStateParams.get("require_kicked", boolean.class, false);
+            if (requireKicked) {
+                try {
+                    StoredSessionAttempt sessionAttempt = callback.fetchAttempt(
+                            request.getSiteId(),
+                            projectIdentifier.get(),
+                            workflowName,
+                            instant,
+                            retryAttemptName
+                    );
+                    return processAttempt(sessionAttempt, lastStateParams, rerunOn, ignoreFailure);
+                }
+                catch (ResourceNotFoundException ex) {
+                    throw new TaskExecutionException(String.format(ENGLISH, "Dependent workflow does not exist. %s, workflowName:%s",
+                            projectIdentifier.transform(ProjectIdentifier::toString).or(""), workflowName));
+                }
+            }
 
-                callback.startSession(
+            try {
+                StoredSessionAttempt sessionAttempt = callback.startSession(
                         context,
                         request.getSiteId(),
                         projectIdentifier.get(),

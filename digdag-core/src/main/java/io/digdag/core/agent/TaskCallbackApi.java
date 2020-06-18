@@ -32,6 +32,14 @@ public interface TaskCallbackApi
             int retryInterval, Config retryStateParams,
             Optional<Config> error);
 
+    StoredSessionAttempt fetchAttempt(
+            int siteId,
+            ProjectIdentifier projectIdentifier,
+            String workflowName,
+            Instant instant,
+            Optional<String> retryAttemptName)
+            throws ResourceNotFoundException;
+
     StoredSessionAttempt startSession(
             OperatorContext context,
             int siteId,

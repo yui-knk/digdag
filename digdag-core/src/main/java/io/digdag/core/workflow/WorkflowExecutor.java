@@ -321,21 +321,37 @@ public class WorkflowExecutor
         }
         catch (ResourceConflictException sessionAlreadyExists) {
             tm.reset();
-            StoredSessionAttemptWithSession conflicted;
-            if (ar.getRetryAttemptName().isPresent()) {
-                conflicted = sm.getSessionStore(siteId)
-                    .getAttemptByName(session.getProjectId(), session.getWorkflowName(), session.getSessionTime(), ar.getRetryAttemptName().get());
-            }
-            else {
-                conflicted = sm.getSessionStore(siteId)
-                    .getLastAttemptByName(session.getProjectId(), session.getWorkflowName(), session.getSessionTime());
-            }
+            StoredSessionAttemptWithSession conflicted = getAlreadyExistsAttempt(
+                    siteId,
+                    session.getProjectId(),
+                    session.getWorkflowName(),
+                    session.getSessionTime(),
+                    ar.getRetryAttemptName()
+            );
             throw new SessionAttemptConflictException("Session already exists", sessionAlreadyExists, conflicted);
         }
 
         noticeStatusPropagate();
 
         return stored;
+    }
+
+    public StoredSessionAttemptWithSession getAlreadyExistsAttempt(
+            int siteId,
+            int projectId,
+            String workflowName,
+            Instant instant,
+            Optional<String> retryAttemptName)
+        throws ResourceNotFoundException
+    {
+        if (retryAttemptName.isPresent()) {
+            return sm.getSessionStore(siteId)
+                    .getAttemptByName(projectId, workflowName, instant, retryAttemptName.get());
+        }
+        else {
+            return sm.getSessionStore(siteId)
+                    .getLastAttemptByName(projectId, workflowName, instant);
+        }
     }
 
     public void storeTasks(
