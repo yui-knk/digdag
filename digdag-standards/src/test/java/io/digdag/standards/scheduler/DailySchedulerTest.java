@@ -29,6 +29,11 @@ public class DailySchedulerTest
         return new DailySchedulerFactory().newScheduler(newConfig().set("_command", pattern), ZoneId.of(timeZone));
     }
 
+    static Scheduler newScheduler(String pattern, String timeZone, String repeatEvery)
+    {
+        return new DailySchedulerFactory().newScheduler(newConfig().set("_command", pattern).set("repeat_every", repeatEvery), ZoneId.of(timeZone));
+    }
+
     private static DateTimeFormatter TIME_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss Z", ENGLISH);
 
@@ -128,6 +133,29 @@ public class DailySchedulerTest
                 is(ScheduleTime.of(
                         instant("2016-03-13 00:00:00 +0000"),
                         instant("2016-03-13 00:00:00 +0000"))));
+    }
+
+    @Test
+    public void firstScheduleTimeRepeatEvery() {
+        // current time is 09:00:00
+        // schedule is 10:00:00 every day
+        // schedule at today 10:00:00
+        Instant currentTime1 = instant("2016-02-03 09:00:00 +0000");
+        assertThat(
+                newScheduler("10:00:00", "UTC", "2").getFirstScheduleTime(currentTime1),
+                is(ScheduleTime.of(
+                        instant("2016-02-04 00:00:00 +0000"),
+                        instant("2016-02-04 10:00:00 +0000"))));
+
+        // current time is 16:00:00
+        // schedule is 10:00:00 every day
+        // schedule at tomorrow 10:00:00
+        Instant currentTime2 = instant("2016-02-03 16:00:00 +0000");
+        assertThat(
+                newScheduler("10:00:00", "UTC", "2").getFirstScheduleTime(currentTime2),
+                is(ScheduleTime.of(
+                        instant("2016-02-04 00:00:00 +0000"),
+                        instant("2016-02-04 10:00:00 +0000"))));
     }
 
     @Test
